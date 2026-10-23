@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TaskPilot AI</title>
+<style>
+:root{font-family:Inter,Segoe UI,Arial,sans-serif;color:#eaf0ff;background:#0b1020}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 10% 0%,#1a2850 0,#0b1020 42%);min-height:100vh}
+.wrap{max-width:1100px;margin:auto;padding:28px 18px}.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:24px}
+.brand{display:flex;align-items:center;gap:12px}.logo{background:#6d7cff;color:white;border-radius:14px;width:48px;height:48px;display:grid;place-items:center;font-size:24px}
+h1{font-size:25px;margin:0}p{color:#aab6d5;line-height:1.5}.pill{border:1px solid #334365;color:#9fefc1;border-radius:99px;padding:8px 12px;font-size:12px}
+.grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,1fr);gap:18px}.panel{background:#121a2e;border:1px solid #253250;border-radius:18px;padding:20px;box-shadow:0 15px 40px #0002}
+h2{font-size:17px;margin:0 0 12px}.sub{font-size:13px;margin-top:0}.chat{height:360px;overflow:auto;display:flex;flex-direction:column;gap:12px;padding:6px 2px 14px}
+.msg{max-width:92%;padding:12px 14px;border-radius:14px;white-space:pre-wrap;line-height:1.45;font-size:14px}.bot{background:#202b46;align-self:flex-start}.user{background:#4f61d8;align-self:flex-end}
+form{display:flex;gap:8px}input{min-width:0;flex:1;background:#0c1324;border:1px solid #34415e;color:white;border-radius:12px;padding:13px;font-size:14px}button{border:0;border-radius:12px;background:#7483ff;color:#fff;font-weight:700;padding:12px 16px;cursor:pointer}button:disabled{opacity:.55;cursor:wait}
+.examples{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 0}.example{font-size:12px;border:1px solid #34415e;color:#c9d3ef;background:transparent;padding:8px 10px}
+.tasklist{display:flex;flex-direction:column;gap:9px}.task{border:1px solid #2a3857;background:#0e1629;border-radius:12px;padding:12px}.taskhead{display:flex;justify-content:space-between;gap:8px}.tasktitle{font-size:14px;font-weight:650}.meta{font-size:11px;color:#9caccd;margin-top:7px}.priority{font-size:10px;text-transform:uppercase;color:#ffd58a}.done{color:#8de5b1}.empty{border:1px dashed #34415e;border-radius:12px;padding:20px;text-align:center;color:#9caccd;font-size:13px}
+.footer{font-size:12px;color:#8392b7;margin-top:18px}.status{font-size:12px;color:#9caccd;margin-top:10px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}.chat{height:300px}.top{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body><main class="wrap">
+<header class="top"><div class="brand"><div class="logo">✦</div><div><h1>TaskPilot AI</h1><p style="margin:4px 0 0">Your work, understood and organized.</p></div></div><div class="pill">● AI AGENT · SQLITE · MCP SERVER</div></header>
+<div class="grid">
+<section class="panel"><h2>Talk to your agent</h2><p class="sub">Ask in plain English. TaskPilot can create tasks, list saved tasks, mark tasks complete, and plan from your open work.</p>
+<div class="chat" id="chat"><div class="msg bot">Hi! I'm TaskPilot. Try “Create a high-priority task to finish my hackathon submission tomorrow” or “Show my open tasks and suggest a plan.”</div></div>
+<form id="form"><input id="message" placeholder="What would you like me to do?" autocomplete="off" maxlength="4000" required><button id="send">Send ↗</button></form>
+<div class="examples"><button class="example" data-prompt="Create a high-priority task to finish my hackathon submission tomorrow.">＋ Create task</button><button class="example" data-prompt="List my open tasks and suggest a plan for today.">◎ Plan my day</button><button class="example" data-prompt="Show all my tasks.">☷ Show tasks</button></div><div class="status" id="status"></div>
+</section>
+<aside class="panel"><h2>Task board <span id="count" style="color:#8e9dbe;font-weight:400"></span></h2><p class="sub">Saved to your local SQLite database.</p><div class="tasklist" id="tasks"><div class="empty">Loading tasks…</div></div><p class="footer">MCP endpoint for local clients: <code>http://127.0.0.1:8001/mcp</code></p></aside>
+</div><p class="footer">Demo note: TaskPilot only reports actions confirmed by its tools. It does not connect to your email or calendar in this prototype.</p>
+</main>
+<script>
+const chatEl=document.querySelector('#chat'),form=document.querySelector('#form'),input=document.querySelector('#message'),send=document.querySelector('#send'),statusEl=document.querySelector('#status');
+function bubble(text,kind){const d=document.createElement('div');d.className='msg '+kind;d.textContent=text;chatEl.appendChild(d);chatEl.scrollTop=chatEl.scrollHeight;return d}
+async function refreshTasks(){try{const r=await fetch('/api/tasks');const data=await r.json();const root=document.querySelector('#tasks');document.querySelector('#count').textContent='('+data.count+')';root.replaceChildren();if(!data.tasks.length){root.innerHTML='<div class="empty">No tasks yet. Ask TaskPilot to create one.</div>';return}for(const t of data.tasks){const card=document.createElement('div');card.className='task';const head=document.createElement('div');head.className='taskhead';const title=document.createElement('div');title.className='tasktitle';title.textContent='#'+t.id+' '+t.title;const status=document.createElement('div');status.className=t.status==='done'?'meta done':'meta';status.textContent=t.status==='done'?'✓ Done':'Open';head.append(title,status);const meta=document.createElement('div');meta.className='meta';meta.textContent='Priority: '+t.priority+(t.due_date?' · Due: '+t.due_date:'');card.append(head,meta);if(t.description){const desc=document.createElement('div');desc.className='meta';desc.textContent=t.description;card.append(desc)}root.append(card)}}catch(e){document.querySelector('#tasks').innerHTML='<div class="empty">Could not load tasks. Is the server running?</div>'}}
+form.addEventListener('submit',async e=>{e.preventDefault();const text=input.value.trim();if(!text)return;bubble(text,'user');input.value='';send.disabled=true;statusEl.textContent='TaskPilot is thinking and using tools if needed…';const wait=bubble('Working on it…','bot');try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text})});const data=await r.json();if(!r.ok)throw new Error(data.detail||'Request failed');wait.textContent=data.reply||'Done.';await refreshTasks()}catch(err){wait.textContent='I could not complete that request: '+err.message}finally{send.disabled=false;statusEl.textContent='';input.focus();chatEl.scrollTop=chatEl.scrollHeight}});
+document.querySelectorAll('[data-prompt]').forEach(b=>b.addEventListener('click',()=>{input.value=b.dataset.prompt;form.requestSubmit()}));refreshTasks();
+</script></body></html>
